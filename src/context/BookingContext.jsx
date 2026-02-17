@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// Firebase imports - Added updateDoc
+// Firebase imports
 import { db } from '../firebase'; 
 import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 
@@ -41,20 +41,30 @@ export const BookingProvider = ({ children }) => {
   // --- 2. Data Add (Booking Save) ---
   const addBooking = async (data) => {
     try {
-      const alreadyBooked = bookings.find((b) => b.mobile === data.mobile);
-      if (alreadyBooked) {
-        return { success: false, message: 'This mobile number is already booked!' };
+      // --- LOGIC CHANGE HERE (Is Line ko dhyan se dekhein) ---
+      
+      // Pehle hum sirf mobile check kar rahe the. 
+      // Ab hum check kar rahe hain ki wo mobile number ho LEKIN uska status 'Expired' NA ho.
+      const activeBooking = bookings.find((b) => 
+        b.mobile === data.mobile && b.status !== 'Expired'
+      );
+
+      // Agar koi aisa booking mila jo Expired nahi hai (Pending ya Success hai), to error do.
+      if (activeBooking) {
+        return { success: false, message: 'This mobile number is already active with a Pending or Success slot!' };
       }
 
+      // Check: Kya slot full hai?
       const slotBookings = bookings.filter(
-        (b) => b.date === data.date && b.time === data.time
+        (b) => b.date === data.date && b.time === data.time && b.status !== 'Expired' 
+        // Note: Expired wale slots ko hum count nahi karenge capacity mein
       );
 
       if (slotBookings.length >= MAX_CAPACITY) {
         return { success: false, message: 'Sorry, this time slot is fully booked!' };
       }
 
-      // Updated: Every new booking now gets a 'status: Pending'
+      // Save to Firebase Online
       const docRef = await addDoc(collection(db, COLLECTION_NAME), {
         ...data,
         status: 'Pending', // Default Status
@@ -66,11 +76,11 @@ export const BookingProvider = ({ children }) => {
 
     } catch (error) {
       console.error("Error adding document: ", error);
-      return { success: false, message: "Network Error!" };
+      return { success: false, message: "Network Error! Check your internet connection." };
     }
   };
 
-  // --- 3. NEW: Update Status (Success/Pending) ---
+  // --- 3. Update Booking Status ---
   const updateBookingStatus = async (id, newStatus) => {
     try {
       const bookingRef = doc(db, COLLECTION_NAME, id);
@@ -79,7 +89,6 @@ export const BookingProvider = ({ children }) => {
       });
     } catch (error) {
       console.error("Error updating status: ", error);
-      alert("Failed to update status.");
     }
   };
 
