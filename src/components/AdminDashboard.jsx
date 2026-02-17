@@ -1,7 +1,6 @@
-// Imports wahi rahenge...
 import React, { useState } from 'react';
 import { useBooking } from '../context/BookingContext';
-import { Trash2, User, Lock, LogOut, Loader2 } from 'lucide-react'; // Loader2 add kiya
+import { Trash2, User, Lock, LogOut, Loader2, CheckCircle, Clock } from 'lucide-react';
 
 const AdminDashboard = () => {
   const context = useBooking();
@@ -9,14 +8,14 @@ const AdminDashboard = () => {
   // Safety check
   if (!context) return null;
 
-  const { bookings, removeBooking, loading } = context; // loading variable nikala
+  // updateBookingStatus ko context se nikala
+  const { bookings, removeBooking, updateBookingStatus, loading } = context; 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
   const ADMIN_PASSWORD = "admin123";
 
-  // ... Login Handler Code same rahega ...
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
@@ -27,16 +26,13 @@ const AdminDashboard = () => {
     }
   };
 
-  // ... Logout Handler same rahega ...
   const handleLogout = () => {
       setIsAuthenticated(false);
       setPassword('');
   };
 
-  // --- 1. Login Screen (Same as before) ---
   if (!isAuthenticated) {
     return (
-      // ... Purana Login wala pura code same rakhein ...
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 max-w-sm w-full">
           <div className="flex justify-center mb-4">
@@ -59,7 +55,6 @@ const AdminDashboard = () => {
     );
   }
 
-  // --- 2. NEW: Loading Screen (Ye naya add karein) ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -69,10 +64,7 @@ const AdminDashboard = () => {
     );
   }
 
-  // --- 3. Main Dashboard (Same as before) ---
   return (
-     // ... Niche ka Table wala code same rahega ...
-     // Bas check kar lein ki aapne purana code delete na kiya ho
      <div className="max-w-6xl mx-auto mt-6 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-8 border-b pb-4">
           <div>
@@ -96,8 +88,8 @@ const AdminDashboard = () => {
               <th className="px-6 py-3">Token ID</th>
               <th className="px-6 py-3">Student Name</th>
               <th className="px-6 py-3">Batch</th>
-              <th className="px-6 py-3">Mobile</th>
               <th className="px-6 py-3">Slot Details</th>
+              <th className="px-6 py-3 text-center">Payment Status</th>
               <th className="px-6 py-3 text-center">Action</th>
             </tr>
           </thead>
@@ -117,13 +109,35 @@ const AdminDashboard = () => {
                     {booking.name}
                   </td>
                   <td className="px-6 py-4">{booking.batch}</td>
-                  <td className="px-6 py-4 font-mono">{booking.mobile}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                         <span className="text-xs font-semibold text-gray-600">{booking.date}</span>
                         <span className="text-blue-600 font-bold">{booking.time}</span>
                     </div>
                   </td>
+
+                  {/* --- YAHAN HAI STATUS TOGGLE BUTTON --- */}
+                  <td className="px-6 py-4 text-center">
+                    <button 
+                      onClick={() => {
+                        const nextStatus = booking.status === 'Success' ? 'Pending' : 'Success';
+                        updateBookingStatus(booking.id, nextStatus);
+                      }}
+                      className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
+                        booking.status === 'Success' 
+                        ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' 
+                        : 'bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-200'
+                      }`}
+                    >
+                      {booking.status === 'Success' ? (
+                        <CheckCircle size={14} />
+                      ) : (
+                        <Clock size={14} />
+                      )}
+                      {booking.status || 'Pending'}
+                    </button>
+                  </td>
+
                   <td className="px-6 py-4 text-center">
                     <button 
                       onClick={() => {

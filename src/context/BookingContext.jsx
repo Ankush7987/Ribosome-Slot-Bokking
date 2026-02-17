@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-// Firebase imports
+// Firebase imports - Added updateDoc
 import { db } from '../firebase'; 
-import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 
 const BookingContext = createContext();
 
@@ -12,11 +12,9 @@ export const BookingProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const MAX_CAPACITY = 4;
-  // Database table ka naam "bookings" hoga
   const COLLECTION_NAME = "bookings"; 
 
   // --- 1. Data Read (Real-time Sync) ---
-  // Jaise hi koi form bharega, ye turant update hoga
   useEffect(() => {
     try {
       const q = query(collection(db, COLLECTION_NAME), orderBy("timestamp", "desc"));
@@ -43,13 +41,11 @@ export const BookingProvider = ({ children }) => {
   // --- 2. Data Add (Booking Save) ---
   const addBooking = async (data) => {
     try {
-      // Check: Kya ye number already hai?
       const alreadyBooked = bookings.find((b) => b.mobile === data.mobile);
       if (alreadyBooked) {
-        return { success: false, message: 'This mobile number is already booked! Please check with Admin.' };
+        return { success: false, message: 'This mobile number is already booked!' };
       }
 
-      // Check: Kya slot full hai?
       const slotBookings = bookings.filter(
         (b) => b.date === data.date && b.time === data.time
       );
@@ -58,22 +54,36 @@ export const BookingProvider = ({ children }) => {
         return { success: false, message: 'Sorry, this time slot is fully booked!' };
       }
 
-      // Save to Firebase Online
+      // Updated: Every new booking now gets a 'status: Pending'
       const docRef = await addDoc(collection(db, COLLECTION_NAME), {
         ...data,
-        timestamp: new Date().toISOString(), // Sorting ke liye
-        createdAt: new Date().toLocaleString() // Dikhane ke liye
+        status: 'Pending', // Default Status
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toLocaleString()
       });
 
-      return { success: true, token: docRef.id }; // Firebase ki ID hi Token banegi
+      return { success: true, token: docRef.id };
 
     } catch (error) {
       console.error("Error adding document: ", error);
-      return { success: false, message: "Network Error! Check your internet connection." };
+      return { success: false, message: "Network Error!" };
     }
   };
 
-  // --- 3. Data Delete ---
+  // --- 3. NEW: Update Status (Success/Pending) ---
+  const updateBookingStatus = async (id, newStatus) => {
+    try {
+      const bookingRef = doc(db, COLLECTION_NAME, id);
+      await updateDoc(bookingRef, {
+        status: newStatus
+      });
+    } catch (error) {
+      console.error("Error updating status: ", error);
+      alert("Failed to update status.");
+    }
+  };
+
+  // --- 4. Data Delete ---
   const removeBooking = async (id) => {
     try {
       if(!id) return;
@@ -85,7 +95,7 @@ export const BookingProvider = ({ children }) => {
   };
 
   return (
-    <BookingContext.Provider value={{ bookings, addBooking, removeBooking, loading }}>
+    <BookingContext.Provider value={{ bookings, addBooking, removeBooking, updateBookingStatus, loading }}>
       {children}
     </BookingContext.Provider>
   );
